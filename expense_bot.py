@@ -24,7 +24,10 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler,
     filters, ContextTypes
 )
-import google.generativeai as genai
+
+# FIX 1: Replaced deprecated `google.generativeai` with `google.genai`
+from google import genai
+from google.genai import types
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIG — loads from .env file automatically
@@ -56,11 +59,25 @@ MONTHS      = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CLIENTS
-# ── FIX 1: Updated to larger, more accurate Vosk model ───────────────────────
 # ─────────────────────────────────────────────────────────────────────────────
-genai.configure(api_key=GEMINI_API_KEY)
-gemini_client = genai.GenerativeModel("gemini-2.5-flash")
-VOSK_MODEL = Model(os.path.join(os.path.dirname(__file__), "vosk-model-en-us-0.22-lgraph"))
+
+# FIX 1 (continued): New google.genai client instantiation
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+
+# FIX 2: Graceful Vosk model loading — clear error if model folder is missing
+_VOSK_MODEL_PATH = os.path.join(os.path.dirname(__file__), "vosk-model-en-us-0.22-lgraph")
+if not os.path.isdir(_VOSK_MODEL_PATH):
+    raise RuntimeError(
+        f"❌ Vosk model not found at: {_VOSK_MODEL_PATH}\n\n"
+        "Download it by running:\n"
+        "  wget https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip\n"
+        "  unzip vosk-model-en-us-0.22-lgraph.zip -d /app/\n\n"
+        "Or add these lines to your Dockerfile:\n"
+        "  RUN wget https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip && \\\n"
+        "      unzip vosk-model-en-us-0.22-lgraph.zip -d /app/ && \\\n"
+        "      rm vosk-model-en-us-0.22-lgraph.zip"
+    )
+VOSK_MODEL = Model(_VOSK_MODEL_PATH)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -109,7 +126,6 @@ def save_expenses(expenses: list) -> None:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # VOICE → TEXT (Vosk — Free, Offline, No API Key Needed)
-# ── FIX 2: Improved audio conversion for better accuracy ─────────────────────
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def transcribe_voice(ogg_path: str) -> str:
@@ -200,9 +216,16 @@ Rules:
 - If no amount found, return amount as 0
 """
 
-    response = gemini_client.generate_content(prompt)
-    raw      = response.text.strip()
-    raw      = raw.replace("```json", "").replace("```", "").strip()
+    # FIX 1 (continued): Updated to new google.genai API call syntax
+    response = gemini_client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0,
+        )
+    )
+    raw = response.text.strip()
+    raw = raw.replace("```json", "").replace("```", "").strip()
     return json.loads(raw)
 
 
