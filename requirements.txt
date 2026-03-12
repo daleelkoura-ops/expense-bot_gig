@@ -1,0 +1,8 @@
+python-telegram-bot==21.3
+google-generativeai
+httpx==0.27.0
+requests==2.31.0
+vosk==0.3.45
+pydub==0.25.1
+audioop-lts
+python-dotenv==1.0.0

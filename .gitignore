@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+venv/
+.venv/
+vosk-model-small-en-us-0.15/
+vosk-model-en-us-0.22-lgraph/
+model.zip
+model2.zip
+*.log
+.DS_Store

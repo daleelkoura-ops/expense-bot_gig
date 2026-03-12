@@ -1,0 +1,3 @@
+toml
+[phases.setup]
+nixPkgs = ["ffmpeg"]
